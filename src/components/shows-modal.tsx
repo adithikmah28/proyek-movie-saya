@@ -12,13 +12,13 @@ import { getMobileDetect, getYear } from '@/lib/utils';
 import MovieService from '@/services/MovieService';
 import { useModalStore } from '@/stores/modal';
 import {
+  type KeyWord,
   MediaType,
   type Genre,
   type ShowWithGenreAndVideo,
   type VideoResult,
 } from '@/types';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import * as React from 'react';
 import Youtube from 'react-youtube';
 import CustomImage from './custom-image';
@@ -64,6 +64,7 @@ const ShowModal = () => {
   const [trailer, setTrailer] = React.useState('');
   const [isPlaying, setPlaying] = React.useState(true);
   const [genres, setGenres] = React.useState<Genre[]>([]);
+  const [isAnime, setIsAnime] = React.useState<boolean>(false);
   const [isMuted, setIsMuted] = React.useState<boolean>(
     modalStore.firstLoad || IS_MOBILE,
   );
@@ -84,6 +85,10 @@ const ShowModal = () => {
     void handleGetData();
   }, []);
 
+  React.useEffect(() => {
+    setIsAnime(false);
+  }, [modalStore]);
+
   const handleGetData = async () => {
     const id: number | undefined = modalStore.show?.id;
     const type: string =
@@ -95,6 +100,16 @@ const ShowModal = () => {
       id,
       type,
     );
+
+    const keywords: KeyWord[] =
+      data?.keywords?.results || data?.keywords?.keywords;
+
+    if (keywords?.length) {
+      setIsAnime(
+        !!keywords.find((keyword: KeyWord) => keyword.name === 'anime'),
+      );
+    }
+
     if (data?.genres) {
       setGenres(data.genres);
     }
@@ -146,6 +161,21 @@ const ShowModal = () => {
     }
   };
 
+  const handleHref = (): string => {
+    const type = isAnime
+      ? 'anime'
+      : modalStore.show?.media_type === MediaType.MOVIE
+      ? 'movie'
+      : 'tv';
+    let id = `${modalStore.show?.id}`;
+    if (isAnime) {
+      const prefix: string =
+        modalStore.show?.media_type === MediaType.MOVIE ? 'm' : 't';
+      id = `${prefix}-${id}`;
+    }
+    return `/watch/${type}/${id}`;
+  };
+
   return (
     <Dialog
       open={modalStore.open}
@@ -159,7 +189,9 @@ const ShowModal = () => {
             ref={imageRef}
             alt={modalStore?.show?.title ?? 'poster'}
             className="-z-40 z-[1] h-auto w-full object-cover"
-            src={`https://image.tmdb.org/t/p/original${modalStore.show?.backdrop_path}`}
+            src={`https://image.tmdb.org/t/p/original${
+              modalStore.show?.backdrop_path ?? modalStore.show?.poster_path
+            }`}
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 100vw, 33vw"
           />
           {trailer && (
@@ -183,12 +215,7 @@ const ShowModal = () => {
           )}
           <div className="absolute bottom-6 z-20 flex w-full items-center justify-between gap-2 px-10">
             <div className="flex items-center gap-2.5">
-              <Link
-                href={`/watch/${
-                  modalStore.show?.media_type === MediaType.MOVIE
-                    ? 'movie'
-                    : 'tv'
-                }/${modalStore.show?.id}`}>
+              <Link href={handleHref()}>
                 <Button
                   aria-label={`${isPlaying ? 'Pause' : 'Play'} show`}
                   className="group h-auto rounded py-1.5">

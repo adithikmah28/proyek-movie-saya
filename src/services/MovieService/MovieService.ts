@@ -1,6 +1,7 @@
 import { getNameFromShow, getSlug } from '@/lib/utils';
 import type {
   CategorizedShows,
+  ISeason,
   KeyWordResponse,
   MediaType,
   Show,
@@ -47,11 +48,15 @@ class MovieService extends BaseService {
   }
 
   static findMovie = cache(async (id: number) => {
-    return this.axios(baseUrl).get<Show>(`/movie/${id}`);
+    return this.axios(baseUrl).get<Show>(
+      `/movie/${id}?append_to_response=keywords`,
+    );
   });
 
   static findTvSeries = cache(async (id: number) => {
-    return this.axios(baseUrl).get<Show>(`/tv/${id}`);
+    return this.axios(baseUrl).get<Show>(
+      `/tv/${id}?append_to_response=keywords`,
+    );
   });
 
   static async getKeywords(
@@ -61,10 +66,17 @@ class MovieService extends BaseService {
     return this.axios(baseUrl).get<KeyWordResponse>(`/${type}/${id}/keywords`);
   }
 
+  static async getSeasons(
+    id: number,
+    season: number,
+  ): Promise<AxiosResponse<ISeason>> {
+    return this.axios(baseUrl).get<ISeason>(`/tv/${id}/season/${season}`);
+  }
+
   static findMovieByIdAndType = cache(async (id: number, type: string) => {
     const params: Record<string, string> = {
       language: 'en-US',
-      append_to_response: 'videos',
+      append_to_response: 'videos,keywords',
     };
     const response: AxiosResponse<ShowWithGenreAndVideo> = await this.axios(
       baseUrl,
@@ -74,6 +86,14 @@ class MovieService extends BaseService {
 
   static urlBuilder(req: TmdbRequest) {
     switch (req.requestType) {
+      case RequestType.ANIME_LATEST:
+        return `/discover/${req.mediaType}?with_keywords=210024%2C&language=en-US&sort_by=primary_release_date.desc&release_date.lte=2024-11-10&with_runtime.gte=1`;
+      case RequestType.ANIME_TRENDING:
+        return `/discover/${req.mediaType}?with_keywords=210024%2C&language=en-US&sort_by=popularity.desc&release_date.lte=2024-11-10&with_runtime.gte=1`;
+      case RequestType.ANIME_TOP_RATED:
+        return `/discover/${req.mediaType}?with_keywords=210024%2C&language=en-US&sort_by=vote_count.desc&air_date.lte=2024-11-10`;
+      case RequestType.ANIME_NETFLIX:
+        return `/discover/${req.mediaType}?with_keywords=210024%2C&with_networks=213&language=en-US`;
       case RequestType.TRENDING:
         return `/trending/${
           req.mediaType
@@ -98,6 +118,12 @@ class MovieService extends BaseService {
         return `/discover/${req.mediaType}?with_genres=${
           req.genre
         }&language=en-US&with_original_language=en&page=${
+          req.page ?? 1
+        }&without_genres=${Genre.TALK},${Genre.NEWS}`;
+      case RequestType.ANIME_GENRE:
+        return `/discover/${req.mediaType}?with_genres=${
+          req.genre
+        }&with_keywords=210024%2C&language=en-US&with_original_language=en&page=${
           req.page ?? 1
         }&without_genres=${Genre.TALK},${Genre.NEWS}`;
       case RequestType.KOREAN:
@@ -159,7 +185,7 @@ class MovieService extends BaseService {
         page ?? 1
       }`,
     );
-    console.log(data.results[0]?.media_type);
+
     data.results.sort((a, b) => {
       return b.popularity - a.popularity;
     });
