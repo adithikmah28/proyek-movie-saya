@@ -151,7 +151,7 @@ export const handleMetadata = cache(
           : keywordResponse.data.keywords;
       keywords = res.map((item: KeyWord) => item.name);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
 
     return {

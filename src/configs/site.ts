@@ -91,19 +91,14 @@ export const siteConfig = {
       // icon: Icons.movie,
     },
     {
+      title: 'Anime',
+      href: '/anime',
+      // icon: Icons.list,
+    },
+    {
       title: 'New & Popular',
       href: '/new-and-popular',
       // icon: Icons.trendingUp,
-    },
-    // {
-    //   title: "My List",
-    //   href: "/my-list",
-    //   // icon: Icons.list,
-    // },
-    {
-      title: 'Notifications',
-      // onClick: () => alert("🛹 Do a kickflip"),
-      // icon: Icons.bell,
     },
   ],
 };

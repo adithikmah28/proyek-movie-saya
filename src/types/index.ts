@@ -4,6 +4,7 @@ export enum MediaType {
   ALL = 'all',
   TV = 'tv',
   MOVIE = 'movie',
+  ANIME = 'anime',
 }
 
 export type CategorizedShows = {
@@ -51,6 +52,8 @@ export type Show = {
   vote_average: number;
   vote_count: number;
   original_name?: string;
+  keywords: KeyWordResponse;
+  seasons: ISeason[];
 };
 
 export type KeyWord = {
@@ -95,6 +98,33 @@ export type ShowWithGenreAndVideo = Show & {
   videos?: {
     results: VideoResult[];
   };
+};
+
+export type ISeason = {
+  _id: string;
+  air_date: string;
+  name: string;
+  overview: string;
+  id: number;
+  poster_path: string;
+  season_number: number;
+  vote_average: number;
+  episodes: IEpisode[];
+};
+
+export type IEpisode = {
+  air_date: string;
+  episode_number: number;
+  id: number;
+  name: string;
+  overview: string;
+  production_code: string;
+  runtime: number;
+  season_number: number;
+  show_id: number;
+  still_path: string;
+  vote_average: number;
+  vote_count: number;
 };
 
 export interface IStack<T> {

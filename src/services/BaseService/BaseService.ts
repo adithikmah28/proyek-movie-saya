@@ -34,7 +34,7 @@ class BaseService {
     const onErrorResponse = (
       error: AxiosError | Error,
     ): Promise<AxiosError> => {
-      console.log(`error in request: ${error.message}`);
+      console.error(`error in request: ${error.message}`);
       return Promise.reject(error);
     };
 

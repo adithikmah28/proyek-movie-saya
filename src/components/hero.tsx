@@ -1,7 +1,7 @@
 'use client';
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { getIdFromSlug } from '@/lib/utils';
+import { getIdFromSlug, getNameFromShow, getSlug } from '@/lib/utils';
 import MovieService from '@/services/MovieService';
 import { useModalStore } from '@/stores/modal';
 import { useSearchStore } from '@/stores/search';
@@ -10,12 +10,14 @@ import { type AxiosResponse } from 'axios';
 import Link from 'next/link';
 import React from 'react';
 import CustomImage from './custom-image';
+import { usePathname } from 'next/navigation';
 
 interface HeroProps {
   randomShow: Show | null;
 }
 
 const Hero = ({ randomShow }: HeroProps) => {
+  const path = usePathname();
   React.useEffect(() => {
     window.addEventListener('popstate', handlePopstateEvent, false);
     return () => {
@@ -43,7 +45,7 @@ const Hero = ({ randomShow }: HeroProps) => {
           useModalStore.setState({ show: data, open: true, play: true });
         })
         .catch((error) => {
-          console.log(`findMovie: `, error);
+          console.error(`findMovie: `, error);
         });
     }
   };
@@ -55,6 +57,20 @@ const Hero = ({ randomShow }: HeroProps) => {
   if (searchStore.query.length > 0) {
     return null;
   }
+
+  const handleHref = (): string => {
+    if (!randomShow) {
+      return '#';
+    }
+    if (!path.includes('/anime')) {
+      const type = randomShow.media_type === MediaType.MOVIE ? 'movie' : 'tv';
+      return `/watch/${type}/${randomShow.id}`;
+    }
+    const prefix: string =
+      randomShow?.media_type === MediaType.MOVIE ? 'm' : 't';
+    const id = `${prefix}-${randomShow.id}`;
+    return `/watch/anime/${id}`;
+  };
 
   return (
     <section aria-label="Hero" className="w-full">
@@ -88,20 +104,10 @@ const Hero = ({ randomShow }: HeroProps) => {
                   {randomShow?.overview ?? '-'}
                 </p>
                 <div className="mt-[1.5vw] flex items-center space-x-2">
-                  <Link
-                    prefetch={false}
-                    href={`/watch/${
-                      randomShow.media_type === MediaType.MOVIE ? 'movie' : 'tv'
-                    }/${randomShow.id}`}>
+                  <Link prefetch={false} href={handleHref()}>
                     <Button
                       aria-label="Play video"
-                      className="h-auto flex-shrink-0 gap-2 rounded-xl"
-                      // onClick={() => {
-                      //   modalStore.setShow(randomShow);
-                      //   modalStore.setOpen(true);
-                      //   modalStore.setPlay(true);
-                      // }}
-                    >
+                      className="h-auto flex-shrink-0 gap-2 rounded-xl">
                       <Icons.play className="fill-current" aria-hidden="true" />
                       Play
                     </Button>
@@ -111,9 +117,21 @@ const Hero = ({ randomShow }: HeroProps) => {
                     variant="outline"
                     className="h-auto flex-shrink-0 gap-2 rounded-xl"
                     onClick={() => {
-                      modalStore.setShow(randomShow);
-                      modalStore.setOpen(true);
-                      modalStore.setPlay(true);
+                      const name = getNameFromShow(randomShow);
+                      const path: string =
+                        randomShow.media_type === MediaType.TV
+                          ? 'tv-shows'
+                          : 'movies';
+                      window.history.pushState(
+                        null,
+                        '',
+                        `${path}/${getSlug(randomShow.id, name)}`,
+                      );
+                      useModalStore.setState({
+                        show: randomShow,
+                        open: true,
+                        play: true,
+                      });
                     }}>
                     <Icons.info aria-hidden="true" />
                     More Info

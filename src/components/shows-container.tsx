@@ -49,6 +49,7 @@ const ShowsContainer = ({ shows }: ShowsContainerProps) => {
         ? await MovieService.findTvSeries(movieId)
         : await MovieService.findMovie(movieId);
       const data: Show = response.data;
+
       if (data)
         useModalStore.setState({
           show: data,
