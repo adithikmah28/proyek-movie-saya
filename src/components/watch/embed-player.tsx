@@ -8,76 +8,86 @@ import { type AxiosResponse } from 'axios';
 import Season from '../season';
 
 interface EmbedPlayerProps {
-  url: string;
+  url: string; // url ini sekarang HANYA untuk Movie
   movieId?: string;
   mediaType?: MediaType;
 }
 
 function EmbedPlayer(props: EmbedPlayerProps) {
   const router = useRouter();
-
   const [seasons, setSeasons] = React.useState<ISeason[] | null>(null);
-
-  React.useEffect(() => {
-    // if anime type -> handle after fetch season and episode
-    if (props.mediaType === MediaType.ANIME) {
-      return;
-    }
-    if (iframeRef.current) {
-      iframeRef.current.src = props.url;
-    }
-
-    const { current } = iframeRef;
-    const iframe: HTMLIFrameElement | null = current;
-    iframe?.addEventListener('load', handleIframeLoaded);
-    return () => {
-      iframe?.removeEventListener('load', handleIframeLoaded);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (!props.movieId || props.mediaType !== MediaType.ANIME) {
-      return;
-    }
-
-    void handleAnime(props.movieId);
-  }, [props.movieId, props.mediaType]);
-
   const loadingRef = React.useRef<HTMLDivElement>(null);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
-  const handleChangeEpisode = (episode: IEpisode): void => {
+  // Effect ini HANYA untuk MOVIE
+  React.useEffect(() => {
+    if (props.mediaType === MediaType.MOVIE && iframeRef.current) {
+      iframeRef.current.src = props.url;
+      const { current } = iframeRef;
+      const iframe: HTMLIFrameElement | null = current;
+      iframe?.addEventListener('load', handleIframeLoaded);
+      return () => {
+        iframe?.removeEventListener('load', handleIframeLoaded);
+      };
+    }
+  }, [props.mediaType, props.url]);
+
+  // Effect ini sekarang untuk ANIME dan TV SERIES
+  React.useEffect(() => {
+    if (
+      !props.movieId ||
+      (props.mediaType !== MediaType.ANIME && props.mediaType !== MediaType.TV)
+    ) {
+      return;
+    }
+    void handleShow(props.movieId, props.mediaType);
+  }, [props.movieId, props.mediaType]);
+
+  // --- INI FUNGSI BARU, KHUSUS UNTUK GANTI EPISODE TV SERIES ---
+  const handleChangeTVEpisode = (episode: IEpisode): void => {
+    const tvId = props.movieId?.replace('t-', ''); // Ambil ID dari props
+    const seasonNumber = episode.season_number;
+    const episodeNumber = episode.episode_number;
+
+    // Membuat URL VidFast yang lengkap untuk TV
+    const vidfastUrl = `https://vidfast.pro/tv/${tvId}/${seasonNumber}/${episodeNumber}`;
+    handleSetIframeUrl(vidfastUrl);
+  };
+
+  // Fungsi lama kita ganti nama jadi khusus untuk ANIME
+  const handleChangeAnimeEpisode = (episode: IEpisode): void => {
     const { show_id: id, episode_number: eps } = episode;
     handleSetIframeUrl(`https://vidsrc.cc/v2/embed/anime/tmdb${id}/${eps}/sub`);
   };
 
-  const handleAnime = async (movieId: string) => {
+  // Fungsi ini kita ubah namanya jadi handleShow, dan sekarang bisa untuk ANIME & TV
+  const handleShow = async (movieId: string, mediaType: MediaType) => {
     const id = Number(movieId.replace('t-', ''));
     const response: AxiosResponse<Show> = await MovieService.findTvSeries(id);
     const { data } = response;
-    if (!data?.seasons?.length) {
-      return;
-    }
-    const seasons = data.seasons.filter(
-      (season: ISeason) => season.season_number,
+    if (!data?.seasons?.length) return;
+
+    const seasons = data.seasons.filter((s) => s.season_number);
+    const promises = seasons.map((s) =>
+      MovieService.getSeasons(id, s.season_number),
     );
-    const promises = seasons.map(async (season: ISeason) => {
-      return MovieService.getSeasons(id, season.season_number);
-    });
 
     const seasonWithEpisodes = await Promise.all(promises);
-    setSeasons(
-      seasonWithEpisodes.map((res: AxiosResponse<ISeason>) => res.data),
-    );
-    handleSetIframeUrl(
-      `https://vidsrc.cc/v2/embed/anime/tmdb${id}/1/sub?autoPlay=false`,
-    );
+    setSeasons(seasonWithEpisodes.map((res) => res.data));
+
+    // MEMBUAT URL AWAL (saat player pertama kali loading)
+    if (mediaType === MediaType.ANIME) {
+      handleSetIframeUrl(
+        `https://vidsrc.cc/v2/embed/anime/tmdb${id}/1/sub?autoPlay=false`,
+      );
+    } else if (mediaType === MediaType.TV) {
+      // Untuk TV, kita buat URL VidFast untuk episode pertama (S1, E1)
+      handleSetIframeUrl(`https://vidfast.pro/tv/${id}/1/1`);
+    }
   };
 
   const handleSetIframeUrl = (url: string): void => {
-    if (!iframeRef.current) {
-      return;
-    }
+    if (!iframeRef.current) return;
     iframeRef.current.src = url;
     const { current } = iframeRef;
     const iframe: HTMLIFrameElement | null = current;
@@ -86,9 +96,7 @@ function EmbedPlayer(props: EmbedPlayerProps) {
   };
 
   const handleIframeLoaded = () => {
-    if (!iframeRef.current) {
-      return;
-    }
+    if (!iframeRef.current) return;
     const iframe: HTMLIFrameElement = iframeRef.current;
     if (iframe) {
       iframe.style.opacity = '1';
@@ -106,8 +114,18 @@ function EmbedPlayer(props: EmbedPlayerProps) {
         backgroundColor: '#000',
       }}>
       {seasons && (
-        <Season seasons={seasons ?? []} onChangeEpisode={handleChangeEpisode} />
+        <Season
+          seasons={seasons ?? []}
+          // --- INI BAGIAN PALING PENTING ---
+          // Kita kasih fungsi yang tepat berdasarkan tipe media
+          onChangeEpisode={
+            props.mediaType === MediaType.ANIME
+              ? handleChangeAnimeEpisode
+              : handleChangeTVEpisode
+          }
+        />
       )}
+      {/* Sisa kode di bawah sini tidak berubah... */}
       <div className="header-top absolute left-0 right-0 top-8 z-[2] flex h-fit w-fit items-center justify-between gap-x-5 px-4 md:h-20 md:gap-x-8 md:px-10 lg:h-24">
         <div className="flex flex-1 items-center gap-x-5 md:gap-x-8">
           <svg
