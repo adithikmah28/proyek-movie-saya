@@ -100,5 +100,9 @@ export const siteConfig = {
       href: '/new-and-popular',
       // icon: Icons.trendingUp,
     },
+    {
+      title: 'Adult',
+      href: '/adult',
+    },
   ],
 };
