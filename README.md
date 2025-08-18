@@ -2,7 +2,7 @@
 
 A launching point for building a movie streaming website.
 
-## Features dd
+## Features
 
 - **Browse Movies**: Explore a vast collection of movies sorted by genre, release date, or popularity.
 - **Search Functionality**: Easily find movies by title, director, or cast.
