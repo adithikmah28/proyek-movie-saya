@@ -27,11 +27,11 @@ const allAdultContent: Record<string, AdultShow> = {
   },
 
   // --- KONTEN CUSTOM (JAPAN TUBE) ---
-  "FC2-PPV-4743971": {
-    id: "FC2-PPV-4743971", // ID custom berupa string
+  "jav002": {
+    id: "jav002", // ID custom berupa string
     isCustom: true,
     embedUrl: "https://upload18.com/play/index/fc2-ppv-4743971", // <-- GANTI DENGAN URL EMBED ASLI
-    title: "FC2-PPV-4743971 [Private shoot 116] Full face reveal, 22-year-old slender shaved pussy, first outdoor exposure, cleaning blow job after creampie as review bonus, limited time offer 4000pt → 2000pt",
+    title: "keren",
     poster_path: "https://avdb.stream27.com/v/FC2-PPV-4743971/poster.jpg", // <-- Poster bisa dari mana saja (misal: imgur)
     media_type: MediaType.MOVIE,
   },
