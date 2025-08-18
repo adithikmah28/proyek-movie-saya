@@ -63,3 +63,20 @@ export const adultContentCategories: CategorizedShows[] = [
     ].filter(Boolean) as Show[]
   },
 ];
+// ... (kode adultContentCategories biarkan di atas)
+
+// --- TAMBAHAN BARU: "BUKU CONTEKAN" UNTUK LINK EMBED ---
+const buildCustomContentMap = () => {
+  const map = new Map<string, string>();
+  adultContentCategories.forEach(category => {
+    category.shows.forEach(show => {
+      // Cek apakah ini konten custom yang punya embedUrl
+      if ('isCustom' in show && show.isCustom && 'embedUrl' in show) {
+        map.set(show.id.toString(), show.embedUrl as string);
+      }
+    });
+  });
+  return map;
+};
+
+export const customContentMap = buildCustomContentMap();
