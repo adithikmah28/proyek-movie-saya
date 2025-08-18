@@ -29,23 +29,14 @@ const Hero = ({ randomShow }: HeroProps) => {
       } else if (/\d/.test(pathname)) {
         const movieId: number = getIdFromSlug(pathname);
         if (!movieId) return;
-
         const findMoviePromise = pathname.includes('/tv-shows')
           ? MovieService.findTvSeries(movieId)
           : MovieService.findMovie(movieId);
-
-        findMoviePromise
-          .then((response: AxiosResponse<Show>) => {
-            useModalStore.setState({
-              show: response.data,
-              open: true,
-              play: true,
-            });
-          })
-          .catch((error) => console.error(`findMovie error:`, error));
+        findMoviePromise.then((response: AxiosResponse<Show>) => {
+          useModalStore.setState({ show: response.data, open: true, play: true });
+        }).catch(error => console.error(`findMovie error:`, error));
       }
     };
-
     window.addEventListener('popstate', handlePopstateEvent, false);
     return () => {
       window.removeEventListener('popstate', handlePopstateEvent, false);
@@ -55,28 +46,27 @@ const Hero = ({ randomShow }: HeroProps) => {
   const handlePlayWithAd = () => {
     if (!randomShow) return;
 
-    // GANTI LINK IEU KU LINK ADSTERRA ANJEUN
-    const adsterraDirectLink = 'https://www.profitableratecpm.com/xdz7cfckrz?key=4da66776844b84dbeb38d4fbfc6fadb9';
+    // GANTI LINK INI DENGAN LINK ADSTERRA-MU
+    const adsterraDirectLink = "https://LINK_DIRECTLINK_ADSTERRA_LO";
 
+    // --- INI BAGIAN YANG DIPERBAIKI (DISAMAKAN DENGAN MODAL) ---
     let targetWatchUrl = '#';
-    const name = getNameFromShow(randomShow);
-    const slug = getSlug(randomShow.id, name);
-
-    if (path.includes('/anime')) {
-      const prefix: string =
-        randomShow.media_type === MediaType.MOVIE ? 'm' : 't';
-      const id = `${prefix}-${randomShow.id}`;
-      targetWatchUrl = `/watch/anime/${id}`;
-    } else {
-      const mediaTypePath =
-        randomShow.media_type === MediaType.MOVIE ? 'movie' : 'tv';
-      targetWatchUrl = `/${mediaTypePath}/${randomShow.id}-${slug}/watch`;
+    const isAnime = path.includes('/anime');
+    const type = isAnime ? 'anime' : (randomShow.media_type === MediaType.MOVIE ? 'movie' : 'tv');
+    let id_segment = `${randomShow.id}`;
+    
+    if (isAnime) {
+      const prefix = randomShow.media_type === MediaType.MOVIE ? 'm' : 't';
+      id_segment = `${prefix}-${id_segment}`;
     }
 
+    // URL SEKARANG JADI BENAR: /watch/movie/12345
+    targetWatchUrl = `/watch/${type}/${id_segment}`;
+    
     window.open(adsterraDirectLink, '_blank');
     router.push(targetWatchUrl);
   };
-
+  
   if (searchStore.query.length > 0) {
     return null;
   }
@@ -87,9 +77,7 @@ const Hero = ({ randomShow }: HeroProps) => {
         <>
           <div className="absolute inset-0 z-0 h-[100vw] w-full sm:h-[56.25vw]">
             <CustomImage
-              src={`https://image.tmdb.org/t/p/original${
-                randomShow.backdrop_path ?? randomShow.poster_path ?? ''
-              }`}
+              src={`https://image.tmdb.org/t/p/original${randomShow.backdrop_path ?? randomShow.poster_path ?? ''}`}
               alt={randomShow.title ?? 'poster'}
               className="-z-40 h-auto w-full object-cover"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 100vw, 33vw"
@@ -114,7 +102,8 @@ const Hero = ({ randomShow }: HeroProps) => {
                   <Button
                     aria-label="Play video"
                     className="h-auto flex-shrink-0 gap-2 rounded-xl"
-                    onClick={handlePlayWithAd}>
+                    onClick={handlePlayWithAd}
+                  >
                     <Icons.play className="fill-current" aria-hidden="true" />
                     Play
                   </Button>
@@ -124,20 +113,9 @@ const Hero = ({ randomShow }: HeroProps) => {
                     className="h-auto flex-shrink-0 gap-2 rounded-xl"
                     onClick={() => {
                       const name = getNameFromShow(randomShow);
-                      const path =
-                        randomShow.media_type === MediaType.TV
-                          ? 'tv-shows'
-                          : 'movies';
-                      window.history.pushState(
-                        null,
-                        '',
-                        `${path}/${getSlug(randomShow.id, name)}`,
-                      );
-                      useModalStore.setState({
-                        show: randomShow,
-                        open: true,
-                        play: true,
-                      });
+                      const path = randomShow.media_type === MediaType.TV ? 'tv-shows' : 'movies';
+                      window.history.pushState(null, '', `${path}/${getSlug(randomShow.id, name)}`);
+                      useModalStore.setState({ show: randomShow, open: true, play: true });
                     }}>
                     <Icons.info aria-hidden="true" />
                     More Info
