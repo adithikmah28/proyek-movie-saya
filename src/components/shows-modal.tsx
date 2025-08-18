@@ -1,5 +1,4 @@
 'use client';
-
 import { Icons } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +7,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { getMobileDetect, getYear } from '@/lib/utils';
+import {
+  getMobileDetect,
+  getYear,
+  getNameFromShow,
+  getSlug,
+} from '@/lib/utils';
 import MovieService from '@/services/MovieService';
 import { useModalStore } from '@/stores/modal';
 import {
@@ -18,10 +22,10 @@ import {
   type ShowWithGenreAndVideo,
   type VideoResult,
 } from '@/types';
-import Link from 'next/link';
 import * as React from 'react';
 import Youtube from 'react-youtube';
 import CustomImage from './custom-image';
+import { useRouter } from 'next/navigation';
 
 type YouTubePlayer = {
   mute: () => void;
@@ -31,17 +35,13 @@ type YouTubePlayer = {
   container: HTMLDivElement;
   internalPlayer: YouTubePlayer;
 };
-
-type YouTubeEvent = {
-  target: YouTubePlayer;
-};
+type YouTubeEvent = { target: YouTubePlayer };
 
 const userAgent =
   typeof navigator === 'undefined' ? 'SSR' : navigator.userAgent;
 const { isMobile } = getMobileDetect(userAgent);
 const defaultOptions: Record<string, object> = {
   playerVars: {
-    // https://developers.google.com/youtube/player_parameters
     rel: 0,
     mute: isMobile() ? 1 : 0,
     loop: 1,
@@ -57,70 +57,50 @@ const defaultOptions: Record<string, object> = {
 };
 
 const ShowModal = () => {
-  // stores
   const modalStore = useModalStore();
+  const router = useRouter();
   const IS_MOBILE: boolean = isMobile();
 
   const [trailer, setTrailer] = React.useState('');
-  const [isPlaying, setPlaying] = React.useState(true);
   const [genres, setGenres] = React.useState<Genre[]>([]);
   const [isAnime, setIsAnime] = React.useState<boolean>(false);
   const [isMuted, setIsMuted] = React.useState<boolean>(
     modalStore.firstLoad || IS_MOBILE,
   );
-  const [options, setOptions] =
-    React.useState<Record<string, object>>(defaultOptions);
 
   const youtubeRef = React.useRef(null);
   const imageRef = React.useRef<HTMLImageElement>(null);
 
-  // get trailer and genres of show
-  React.useEffect(() => {
-    if (modalStore.firstLoad || IS_MOBILE) {
-      setOptions((state: Record<string, object>) => ({
-        ...state,
-        playerVars: { ...state.playerVars, mute: 1 },
-      }));
-    }
-    void handleGetData();
-  }, []);
-
   React.useEffect(() => {
     setIsAnime(false);
-  }, [modalStore]);
 
-  const handleGetData = async () => {
-    const id: number | undefined = modalStore.show?.id;
-    const type: string =
-      modalStore.show?.media_type === MediaType.TV ? 'tv' : 'movie';
-    if (!id || !type) {
-      return;
-    }
-    const data: ShowWithGenreAndVideo = await MovieService.findMovieByIdAndType(
-      id,
-      type,
-    );
+    const handleGetData = async () => {
+      if (!modalStore.show) return;
+      const { id, media_type } = modalStore.show;
+      const type = media_type === MediaType.TV ? 'tv' : 'movie';
 
-    const keywords: KeyWord[] =
-      data?.keywords?.results || data?.keywords?.keywords;
+      const data = await MovieService.findMovieByIdAndType(id, type);
+      const keywords: KeyWord[] =
+        data?.keywords?.results || data?.keywords?.keywords || [];
 
-    if (keywords?.length) {
-      setIsAnime(
-        !!keywords.find((keyword: KeyWord) => keyword.name === 'anime'),
-      );
-    }
+      if (keywords.length) {
+        setIsAnime(!!keywords.find((k: KeyWord) => k.name === 'anime'));
+      }
+      if (data?.genres) {
+        setGenres(data.genres);
+      }
+      if (data.videos?.results?.length) {
+        const result = data.videos.results.find(
+          (item: VideoResult) => item.type === 'Trailer',
+        );
+        if (result?.key) setTrailer(result.key);
+      }
+    };
 
-    if (data?.genres) {
-      setGenres(data.genres);
+    if (modalStore.open) {
+      void handleGetData();
     }
-    if (data.videos?.results?.length) {
-      const videoData: VideoResult[] = data.videos?.results;
-      const result: VideoResult | undefined = videoData.find(
-        (item: VideoResult) => item.type === 'Trailer',
-      );
-      if (result?.key) setTrailer(result.key);
-    }
-  };
+  }, [modalStore.open, modalStore.show]);
 
   const handleCloseModal = () => {
     modalStore.reset();
@@ -131,72 +111,69 @@ const ShowModal = () => {
     }
   };
 
-  const onEnd = (event: YouTubeEvent) => {
-    event.target.seekTo(0);
-  };
+  const handlePlayWithAdFromModal = () => {
+    if (!modalStore.show) return;
 
-  const onPlay = () => {
-    if (imageRef.current) {
-      imageRef.current.style.opacity = '0';
-    }
-    if (youtubeRef.current) {
-      const iframeRef: HTMLElement | null =
-        document.getElementById('video-trailer');
-      if (iframeRef) iframeRef.classList.remove('opacity-0');
-    }
-  };
+    const adsterraDirectLink = 'https://LINK_DIRECTLINK_ADSTERRA_LO'; // <-- GANTI INI
 
-  const onReady = (event: YouTubeEvent) => {
-    event.target.playVideo();
-  };
-
-  const handleChangeMute = () => {
-    setIsMuted((state: boolean) => !state);
-    if (!youtubeRef.current) return;
-    const videoRef: YouTubePlayer = youtubeRef.current as YouTubePlayer;
-    if (isMuted && youtubeRef.current) {
-      videoRef.internalPlayer.unMute();
-    } else if (youtubeRef.current) {
-      videoRef.internalPlayer.mute();
-    }
-  };
-
-  const handleHref = (): string => {
+    const { show } = modalStore;
+    let targetWatchUrl = '#';
     const type = isAnime
       ? 'anime'
-      : modalStore.show?.media_type === MediaType.MOVIE
+      : show.media_type === MediaType.MOVIE
       ? 'movie'
       : 'tv';
-    let id = `${modalStore.show?.id}`;
+    let id_segment = `${show.id}`;
+
     if (isAnime) {
-      const prefix: string =
-        modalStore.show?.media_type === MediaType.MOVIE ? 'm' : 't';
-      id = `${prefix}-${id}`;
+      const prefix = show.media_type === MediaType.MOVIE ? 'm' : 't';
+      id_segment = `${prefix}-${id_segment}`;
     }
-    return `/watch/${type}/${id}`;
+
+    targetWatchUrl = `/watch/${type}/${id_segment}`;
+
+    window.open(adsterraDirectLink, '_blank');
+    router.push(targetWatchUrl);
   };
 
+  const onEnd = (event: YouTubeEvent) => event.target.seekTo(0);
+  const onPlay = () => {
+    if (imageRef.current) imageRef.current.style.opacity = '0';
+  };
+  const onReady = (event: YouTubeEvent) => event.target.playVideo();
+  const handleChangeMute = () => {
+    const videoRef = youtubeRef.current as YouTubePlayer | null;
+    if (!videoRef) return;
+    isMuted ? videoRef.internalPlayer.unMute() : videoRef.internalPlayer.mute();
+    setIsMuted(!isMuted);
+  };
+
+  if (!modalStore.open || !modalStore.show) return null;
+
   return (
-    <Dialog
-      open={modalStore.open}
-      onOpenChange={handleCloseModal}
-      aria-label="Modal containing show's details">
+    <Dialog open={modalStore.open} onOpenChange={handleCloseModal}>
       <DialogContent className="w-full overflow-hidden rounded-md bg-zinc-900 p-0 text-left align-middle shadow-xl dark:bg-zinc-900 sm:max-w-3xl lg:max-w-4xl">
         <div className="video-wrapper relative aspect-video">
           <CustomImage
             fill
             priority
             ref={imageRef}
-            alt={modalStore?.show?.title ?? 'poster'}
+            alt={modalStore.show.title ?? 'poster'}
             className="-z-40 z-[1] h-auto w-full object-cover"
             src={`https://image.tmdb.org/t/p/original${
-              modalStore.show?.backdrop_path ?? modalStore.show?.poster_path
+              modalStore.show.backdrop_path ?? modalStore.show.poster_path
             }`}
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 100vw, 33vw"
           />
           {trailer && (
             <Youtube
-              opts={options}
+              opts={{
+                ...defaultOptions,
+                playerVars: {
+                  ...defaultOptions.playerVars,
+                  mute: isMuted ? 1 : 0,
+                },
+              }}
               onEnd={onEnd}
               onPlay={onPlay}
               ref={youtubeRef}
@@ -204,30 +181,24 @@ const ShowModal = () => {
               videoId={trailer}
               id="video-trailer"
               title={
-                modalStore.show?.title ??
-                modalStore.show?.name ??
-                'video-trailer'
+                modalStore.show.title ?? modalStore.show.name ?? 'video-trailer'
               }
               className="relative aspect-video w-full"
               style={{ width: '100%', height: '100%' }}
-              iframeClassName={`relative pointer-events-none w-[100%] h-[100%] z-[-10] opacity-0`}
             />
           )}
           <div className="absolute bottom-6 z-20 flex w-full items-center justify-between gap-2 px-10">
             <div className="flex items-center gap-2.5">
-              <Link href={handleHref()}>
-                <Button
-                  aria-label={`${isPlaying ? 'Pause' : 'Play'} show`}
-                  className="group h-auto rounded py-1.5">
-                  <>
-                    <Icons.play
-                      className="mr-1.5 h-6 w-6 fill-current"
-                      aria-hidden="true"
-                    />
-                    Play
-                  </>
-                </Button>
-              </Link>
+              <Button
+                aria-label="Play show"
+                className="group h-auto rounded py-1.5"
+                onClick={handlePlayWithAdFromModal}>
+                <Icons.play
+                  className="mr-1.5 h-6 w-6 fill-current"
+                  aria-hidden="true"
+                />
+                Play
+              </Button>
             </div>
             <Button
               aria-label={`${isMuted ? 'Unmute' : 'Mute'} video`}
@@ -244,27 +215,29 @@ const ShowModal = () => {
         </div>
         <div className="grid gap-2.5 px-10 pb-10">
           <DialogTitle className="text-lg font-medium leading-6 text-slate-50 sm:text-xl">
-            {modalStore.show?.title ?? modalStore.show?.name}
+            {modalStore.show.title ?? modalStore.show.name}
           </DialogTitle>
           <div className="flex items-center space-x-2 text-sm sm:text-base">
             <p className="font-semibold text-green-400">
-              {Math.round((Number(modalStore.show?.vote_average) / 10) * 100) ??
+              {Math.round((Number(modalStore.show.vote_average) / 10) * 100) ??
                 '-'}
               % Match
             </p>
-            {modalStore.show?.release_date ? (
-              <p>{getYear(modalStore.show?.release_date)}</p>
-            ) : modalStore.show?.first_air_date ? (
-              <p>{getYear(modalStore.show?.first_air_date)}</p>
-            ) : null}
-            {modalStore.show?.original_language && (
+            <p>
+              {getYear(
+                modalStore.show.release_date ??
+                  modalStore.show.first_air_date ??
+                  '',
+              )}
+            </p>
+            {modalStore.show.original_language && (
               <span className="grid h-4 w-7 place-items-center text-xs font-bold text-neutral-400 ring-1 ring-neutral-400">
                 {modalStore.show.original_language.toUpperCase()}
               </span>
             )}
           </div>
           <DialogDescription className="line-clamp-3 text-xs text-slate-50 dark:text-slate-50 sm:text-sm">
-            {modalStore.show?.overview ?? '-'}
+            {modalStore.show.overview ?? '-'}
           </DialogDescription>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <span className="text-slate-400">Genres:</span>
