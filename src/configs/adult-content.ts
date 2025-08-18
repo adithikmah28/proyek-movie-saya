@@ -27,8 +27,8 @@ const allAdultContent: Record<string, AdultShow> = {
   },
 
   // --- KONTEN CUSTOM (JAPAN TUBE) ---
-  "jav002": {
-    id: "jav002", // ID custom berupa string
+  "jav001": {
+    id: "jav001", // ID custom berupa string
     isCustom: true,
     embedUrl: "https://upload18.com/play/index/fc2-ppv-4743971", // <-- GANTI DENGAN URL EMBED ASLI
     title: "keren",
