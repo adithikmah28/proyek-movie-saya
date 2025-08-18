@@ -1,12 +1,23 @@
 import React from 'react';
+import ShowsContainer from '@/components/shows-container'; // <-- Kita pakai komponen utama
+import { adultContentCategories } from '@/configs/adult-content'; // <-- Kita panggil kategori manual kita
+import { siteConfig } from '@/configs/site';
+
+export const revalidate = 3600;
 
 export default function AdultPage() {
+  // Ambil data kategori yang sudah kita buat
+  const allShows = adultContentCategories;
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-4">Konten Adult</h1>
-      <p className="text-lg">
-        Halaman ini sedang dalam tahap pembangunan. Konten manual akan segera ditambahkan.
-      </p>
+      {/* Judul utama halaman */}
+      <h1 className="mb-8 text-3xl font-bold">
+        {siteConfig.name} - Adult Collection
+      </h1>
+      
+      {/* Tampilkan semua kategori dan filmnya dengan komponen ShowsContainer */}
+      <ShowsContainer shows={allShows} />
     </div>
   );
 }
