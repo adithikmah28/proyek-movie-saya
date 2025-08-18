@@ -56,7 +56,7 @@ const Hero = ({ randomShow }: HeroProps) => {
     if (!randomShow) return;
 
     // GANTI LINK IEU KU LINK ADSTERRA ANJEUN
-    const adsterraDirectLink = 'https://LINK_DIRECTLINK_ADSTERRA_LO';
+    const adsterraDirectLink = 'https://www.profitableratecpm.com/xdz7cfckrz?key=4da66776844b84dbeb38d4fbfc6fadb9';
 
     let targetWatchUrl = '#';
     const name = getNameFromShow(randomShow);
